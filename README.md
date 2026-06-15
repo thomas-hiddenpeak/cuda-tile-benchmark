@@ -2,77 +2,77 @@
 
 [![CI](https://github.com/thomas-hiddenpeak/cuda-tile-benchmark/actions/workflows/benchmark-ci.yml/badge.svg)](https://github.com/thomas-hiddenpeak/cuda-tile-benchmark/actions/workflows/benchmark-ci.yml)
 
-NVIDIA Jetson AGX Thor (sm_110a) 上的 NVFP4 和 BF16 Block-Scaled GEMM 调优项目。基于 CUTLASS，覆盖 Tile Shape、Cluster 布局、SF Vector、Problem Size 等多组参数的搜索。
+NVFP4 and BF16 Block-Scaled GEMM tuning on NVIDIA Jetson AGX Thor (sm_110a) using CUTLASS. Searches over tile shape, cluster layout, SF vector size, and problem size.
 
-## 硬件
+## Hardware
 
-| 参数 | 值 |
-|---|---|---|
+| Parameter | Value |
+|---|---|
 | GPU | NVIDIA Thor (sm_110a) |
-| SM | 20 |
+| SM count | 20 |
 | Clock | 1,575 MHz (MAXN) |
 
-## 性能数据
+## Measured Performance
 
-| 类型 | Config | TFLOPS |
-|---|---|---|---|
+| Type | Config | TFLOPS |
+|---|---|---|
 | **FP4→FP4** | M256×N128×K256 + C2×2×1 | **579** |
 | BF16→BF16 (CUTLASS)`*` | M256×N128×K64 + C2×2×1 | 491 |
-| BF16→BF16 (cuda_tile.h, ⚠️ 旧) | C2×2×1 | 458 |
+| BF16→BF16 (cuda_tile.h, ⚠️ old) | C2×2×1 | 458 |
 | FP4→BF16 | SFD bottleneck | 464 |
 
-`*` CUTLASS CollectiveBuilder (`OpClassTensorOp`, `bfloat16_t`) — 替代不可编译的 `bench_bf16.cu`。TF 数待实测确认。
+`*` CUTLASS CollectiveBuilder (`OpClassTensorOp`, `bfloat16_t`) — replaces the unbuildable `bench_bf16.cu`. TFLOPS pending on-target verification.
 
-**结论**：FP4→FP4 受 SFD（Scale Factor Decompression）瓶颈拖累，相比 BF16→BF16 有约 32% 额外开销。BF16 基线改用 CUTLASS 原生 BF16 tensor core 实现后性能待实测。CUTLASS 框架内继续调优的空间已不大，要进一步提升需手写 PTX 或架构级优化。
+**Summary**: FP4→FP4 is limited by SFD (Scale Factor Decompression) overhead, roughly 32% more than the equivalent BF16→BF16 path. The BF16 baseline has moved to CUTLASS native BF16 tensor core (`bench_bf16_cutlass.cu`), pending on-target validation. Further tuning within CUTLASS yields diminishing returns; improving beyond the current 579 TFLOPS would likely require handwritten PTX or architecture-level changes.
 
-## 快速开始
+## Quick Start
 
-### 依赖
+### Prerequisites
 
 - CUDA 13.3 (CUDA Toolkit 13.3)
-- CUTLASS (master, 支持 `sm_110a`)
+- CUTLASS (master branch, with `sm_110a` support)
 
-### 环境配置
+### Environment Setup
 
-编辑 `env.mk`（Makefile 环境）或 `env.sh`（shell 环境），设置本地路径：
+Edit `env.mk` (for Makefile) or `env.sh` (for shell scripts) to set local paths:
 
 ```bash
-# 方式一：直接编辑 env.mk
+# Option 1: edit env.mk directly
 NVCC       ?= /usr/local/cuda-13.3/bin/nvcc
 CUTLASS_DIR ?= /path/to/cutlass
 
-# 方式二（推荐）：创建 env.local.mk，不会污染 git
+# Option 2 (recommended): create env.local.mk, which won't pollute git
 $ cp env.mk env.local.mk
-$ vi env.local.mk   # 修改 NVCC / CUTLASS_DIR
+$ vi env.local.mk   # modify NVCC / CUTLASS_DIR
 ```
 
-### 编译
+### Building
 
 ```bash
 cd cuda_tile_benchmark
 
-# 编译所有 benchmark
+# Build all benchmarks
 make
 
-# 或编译单个
+# Build a single binary
 make bench_nvfp4_fp4
 
-# 自定义 tile/cluster（通过 Makefile pattern 规则）
+# Custom tile/cluster via Makefile pattern rule
 make bench_nvfp4_fp4.m128n128 TILES="-DTILE_M=128 -DTILE_N=128 -DTILE_K=128"
 
-# 或直接使用 shell 脚本（自动 source env.sh）
+# Or use a shell script (auto-sources env.sh)
 ./run_tile_test.sh 256 128 256 2 1
 ```
 
-> **注意**：`-arch=sm_110a` 必须带 `a` 后缀（启用 TMA/tcgen05.mma.blockscaled/TMEM），`--expt-relaxed-constexpr` 不能少。详见 [NVFP4_BREAKTHROUGH.md](NVFP4_BREAKTHROUGH.md)。
+> **Note**: `-arch=sm_110a` requires the `a` suffix (enables TMA, tcgen05.mma.blockscaled, TMEM). `--expt-relaxed-constexpr` is also required. See [NVFP4_BREAKTHROUGH.md](NVFP4_BREAKTHROUGH.md).
 
-### 运行
+### Running
 
 ```bash
 ./bench_nvfp4_fp4 --m=4096 --n=4096 --k=4096 --iterations=5
 ```
 
-输出示例：
+Example output:
 ```
 GPU: NVIDIA Thor | SMs: 20 | Clock: 2601 MHz | Peak: 1032 TF (dense @ 1575 MHz)
   Disposition: Passed
@@ -82,74 +82,74 @@ GPU: NVIDIA Thor | SMs: 20 | Clock: 2601 MHz | Peak: 1032 TF (dense @ 1575 MHz)
   TFLOPS: 569.806
 ```
 
-JSON 输出：
+JSON output:
 ```bash
 ./bench_nvfp4_fp4 --m=4096 --n=4096 --k=4096 --json
 ```
 
-### 命令行选项
+### CLI Options
 
-| 选项 | 默认值 | 说明 |
+| Option | Default | Description |
 |---|---|---|
-| `--m=N` | 1024 | M 维度 |
-| `--n=N` | 1024 | N 维度 |
-| `--k=N` | 1024 | K 维度 |
-| `--iterations=N` | 50 | 性能测试迭代次数 |
-| `--warmup=N` | 5 | 预热迭代次数（不计时） |
-| `--seed=N` | 42 | 随机种子 |
-| `--json` | off | 输出结构化 JSON |
+| `--m=N` | 1024 | M dimension |
+| `--n=N` | 1024 | N dimension |
+| `--k=N` | 1024 | K dimension |
+| `--iterations=N` | 50 | Performance measurement iterations |
+| `--warmup=N` | 5 | Warmup iterations (not timed) |
+| `--seed=N` | 42 | Random seed |
+| `--json` | off | Output structured JSON |
 
-## 项目结构
+## Project Structure
 
-### 主要 Benchmark
+### Core Benchmarks
 
-| 文件 | 类型 | 说明 |
-|---|---|---|---|
-| `bench_nvfp4_fp4.cu` | **FP4→FP4** | 当前主 benchmark，CUTLASS CollectiveBuilder 实现 |
-| `bench_nvfp4_fp4_bf16.cu` | FP4→BF16 | 混合精度（SFD 瓶颈分析） |
-| `bench_bf16_cutlass.cu` | **BF16→BF16** | `OpClassTensorOp` + `bfloat16_t`，CUTLASS 原生 tensor core 基线 |
-| `bench_bf16.cu` | BF16→BF16 | 基于 cuda_tile.h（⚠️ CUDA 13.3 不可编译，需 `-enable-tile`） |
-| `legacy/bench_bf16_min.cu` | BF16→BF16 | 可运行的简化版（单 tile 配置） |
-| `legacy/bench_nvfp4_cutlass.cu` | FP4→BF16 | CUTLASS 72a 移植（初始实验） |
-| `legacy/bench_nvfp4_ptx.cu` | 手写 PTX | PTX 级别的 NVFP4 实验 |
-| `legacy/bench_nvfp4_ultra.cu` | 实验性 | 超优化尝试 |
+| File | Type | Description |
+|---|---|---|
+| `bench_nvfp4_fp4.cu` | **FP4→FP4** | Primary FP4 benchmark, CUTLASS CollectiveBuilder implementation |
+| `bench_nvfp4_fp4_bf16.cu` | FP4→BF16 | Mixed-precision SFD bottleneck analysis |
+| `bench_bf16_cutlass.cu` | **BF16→BF16** | `OpClassTensorOp` + `bfloat16_t`, CUTLASS native tensor core baseline |
+| `bench_bf16.cu` | BF16→BF16 | Based on cuda_tile.h (⚠️ not buildable with CUDA 13.3, requires `-enable-tile`) |
+| `legacy/bench_bf16_min.cu` | BF16→BF16 | Runnable simplified version (single tile config) |
+| `legacy/bench_nvfp4_cutlass.cu` | FP4→BF16 | CUTLASS 72a port (early experiments) |
+| `legacy/bench_nvfp4_ptx.cu` | Handwritten PTX | PTX-level NVFP4 experiments |
+| `legacy/bench_nvfp4_ultra.cu` | Experimental | Aggressive optimization attempts |
 
-### 搜索脚本
+### Search Scripts
 
-通过编译器 `-D` 宏定义切换配置（不修改源码）。**每个配置编译约 1-2 分钟**（CUTLASS 模板实例化开销）。
+Configurations are switched via compiler `-D` flags (no source modification). **Each config takes ~1-2 minutes to compile** (CUTLASS template instantiation overhead).
 
-| 脚本 | 用途 | 配置数 |
-|---|---|---|---|
-| `build_nvfp4_cutlass.sh` | CUTLASS 72a 移植编译 | 1 |
-| `run_fp4_m256.sh` | M256 tile 系列 + Cluster | 6 |
-| `run_fp4_search.sh` | M×N × SF Vector 全搜索 | 36 |
-| `run_fp4_asymmetric.sh` | 非对称 tile (M128/M256) | 32 |
+| Script | Purpose | Configs |
+|---|---|---|
+| `build_nvfp4_cutlass.sh` | CUTLASS 72a port build | 1 |
+| `run_fp4_m256.sh` | M256 tile series + cluster | 6 |
+| `run_fp4_search.sh` | M×N × SF Vector full search | 36 |
+| `run_fp4_asymmetric.sh` | Asymmetric tiles (M128/M256) | 32 |
 | `run_sf_search.sh` | SF vector size | 8 |
-| `run_tile_search.sh` | 原始 tile shape × cluster | 40 |
-| `run_tile_test.sh` | 单配置测试 | 1 |
+| `run_tile_search.sh` | Tile shape × cluster | 40 |
+| `run_tile_test.sh` | Single config test | 1 |
 
-结果自动保存到 `results/results_YYYYMMDD_HHMMSS.jsonl`。
+Results are saved to `results/results_YYYYMMDD_HHMMSS.jsonl`.
 
-### 辅助文件
+### Supporting Files
 
-| 文件 | 说明 |
+| File | Description |
 |---|---|
-| `env.mk` | Makefile 环境配置（NVCC、CUTLASS_DIR、PEAK_TFLOPS），支持 `env.local.mk` 覆写 |
-| `env.sh` | Shell 环境配置（同上，供搜索脚本 `source` 使用） |
-| `run_isolated.sh` | GPU 时钟锁定/MAXN 电源模式，确保可复现的 benchmark 条件 |
-| `helper.h` | GpuTimer、CUDA/CUTLASS CHECK 宏 |
-| `FP4_OPTIMIZATION_SPEC.md` | 优化规范与搜索记录 |
-| `NVFP4_BREAKTHROUGH.md` | NVFP4 在 sm_110a 上的踩坑记录 |
-| `METHODOLOGY.md` | 测量方法学：计时方式、异常值处理、统计报告、已知限制 |
-| `analyze_results.py` | 结果聚合工具：top-N 提取、分组统计、LaTeX 表格生成、CSV 导出、多实现对比 |
-| `plot_results.py` | 可视化：top-N 柱状图、scaling 折线图、tile×cluster 热力图、跨实现分组对比图 |
-| `benchmark_suite.py` | 多运行 harness：N 次运行聚合（grand mean ± 95% CI）、JSON/CSV 报告输出 |
+| `env.mk` | Makefile environment (NVCC, CUTLASS_DIR, PEAK_TFLOPS), supports `env.local.mk` overrides |
+| `env.sh` | Shell environment (same variables, sourced by search scripts) |
+| `run_isolated.sh` | GPU clock locking / MAXN power mode for reproducible benchmarks |
+| `helper.h` | GpuTimer, CUDA/CUTLASS CHECK macros |
+| `FP4_OPTIMIZATION_SPEC.md` | Optimization history and search records |
+| `NVFP4_BREAKTHROUGH.md` | Issues encountered on sm_110a |
+| `METHODOLOGY.md` | Measurement methodology: timing approach, outlier handling, statistics, known limitations |
+| `analyze_results.py` | Result aggregation: top-N extraction, grouped stats, LaTeX table generation, CSV export, cross-implementation comparison |
+| `plot_results.py` | Visualization: bar charts, scaling line plots, tile×cluster heatmaps, grouped comparison charts |
+| `benchmark_suite.py` | Multi-run harness: N-run aggregation (grand mean ± 95% CI), JSON report output |
 
-## 搜索结果
+## Search Results
 
-### FP4→FP4 Tile 搜索
+### FP4→FP4 Tile Search
 
-| M×N | K | Cluster | TF | 状态 |
+| M×N | K | Cluster | TF | Status |
 |---|---|---|---|---|
 | 128×128 | 256 | C2×2×1 | 492 | ✅ |
 | 128×192 | 256 | C2×1×1 | 559 | ✅ |
@@ -160,16 +160,16 @@ JSON 输出：
 | 256×256 | 256 | C2×1×1 / C2×2×1 | — | ❌ smem |
 | 256×64 | 256 | C2×1×1 / C2×2×1 | — | ❌ hang |
 
-### FP4→FP4 Cluster 搜索 (M128×128×K256)
+### FP4→FP4 Cluster Search (M128×128×K256)
 
 | Cluster | TF |
 |---|---|
 | C2×2×1 | 492 ✅ |
 | C4×1×1 / C2×1×1 / C1×2×1 / C1×4×1 | ~287 |
 | C1×1×1 | 231 |
-| C4×2×1 / C2×4×1 / C4×4×1 / C2×2×2 | ❌ 不可用 |
+| C4×2×1 / C2×4×1 / C4×4×1 / C2×2×2 | ❌ unavailable |
 
-### BF16→BF16 Cluster 搜索 (C2×2×1)
+### BF16→BF16 Cluster Search (C2×2×1)
 
 | TF |
 |---|
@@ -184,79 +184,79 @@ JSON 输出：
 | 2048 | 260 |
 | 4096 | 579 |
 
-完整搜索记录见 [FP4_OPTIMIZATION_SPEC.md](FP4_OPTIMIZATION_SPEC.md)。
+Full search history in [FP4_OPTIMIZATION_SPEC.md](FP4_OPTIMIZATION_SPEC.md).
 
-## 目录结构
+## Directory Layout
 
 ```
-├── env.mk                      # Makefile 环境（集中管理 NVCC/CUTLASS_DIR）
-├── env.sh                      # Shell 环境（同上，供搜索脚本 source）
-├── run_isolated.sh             # GPU 时钟锁定/隔离 benchmark 工具
-├── bench_nvfp4_fp4.cu          # FP4→FP4 主 benchmark
-├── bench_nvfp4_fp4_bf16.cu     # FP4→BF16 混合精度
-├── bench_bf16_cutlass.cu       # BF16→BF16 CUTLASS 原生 tensor core 基线
-├── bench_bf16.cu               # BF16→BF16 基于 cuda_tile.h（旧基线，不可编译）
-├── helper.h                    # GpuTimer、CUDA/CUTLASS CHECK 宏
-├── build_nvfp4_cutlass.sh      # 编译脚本（CUTLASS 72a 移植）
-├── run_fp4_*.sh                # 搜索脚本（通过 -D 宏，不修改源码）
+├── env.mk                      # Makefile environment (NVCC/CUTLASS_DIR)
+├── env.sh                      # Shell environment (sourced by search scripts)
+├── run_isolated.sh             # GPU clock locking / isolation tool
+├── bench_nvfp4_fp4.cu          # FP4→FP4 primary benchmark
+├── bench_nvfp4_fp4_bf16.cu     # FP4→BF16 mixed precision
+├── bench_bf16_cutlass.cu       # BF16→BF16 CUTLASS native tensor core baseline
+├── bench_bf16.cu               # BF16→BF16 based on cuda_tile.h (old baseline, not buildable)
+├── helper.h                    # GpuTimer, CUDA/CUTLASS CHECK macros
+├── build_nvfp4_cutlass.sh      # Build script (CUTLASS 72a port)
+├── run_fp4_*.sh                # Search scripts (compiler -D flags)
 ├── run_sf_search.sh
 ├── run_tile_*.sh
-├── FP4_OPTIMIZATION_SPEC.md    # 优化规范与搜索记录
-├── NVFP4_BREAKTHROUGH.md       # sm_110a 踩坑记录
+├── FP4_OPTIMIZATION_SPEC.md    # Optimization spec and search records
+├── NVFP4_BREAKTHROUGH.md       # Issues encountered on sm_110a
 ├── tile_search_results.md
-├── analyze_results.py          # 结果聚合与分析工具
-├── plot_results.py             # 可视化工具
-├── benchmark_suite.py          # 多运行聚合 harness
-├── Makefile                    # 编译入口
+├── analyze_results.py          # Result aggregation and analysis
+├── plot_results.py             # Visualization tool
+├── benchmark_suite.py          # Multi-run aggregation harness
+├── Makefile                    # Build entry point
 ├── README.md
-├── METHODOLOGY.md              # 测量方法学文档
+├── METHODOLOGY.md              # Measurement methodology documentation
 ├── .gitignore
-├── .editorconfig               # 编辑器格式统一配置
-├── .github/workflows/          # CI 流水线配置
-├── legacy/                     # 历史/实验性文件
-├── probes/                     # 硬件探测工具
-├── tests/                      # 测试文件
-└── results/                    # 搜索结果（JSONL）+ README
+├── .editorconfig               # Editor format settings
+├── .github/workflows/          # CI pipeline config
+├── legacy/                     # Historical / experimental files
+├── probes/                     # Hardware probe tools
+├── tests/                      # Test files
+└── results/                    # Search results (JSONL) + README
 ```
 
-## 关键发现
+## Key Observations
 
-1. **SFD 是主要瓶颈**：FP4→FP4 的 Scale Factor 解压开销是主要性能限制因素，距 BF16 CUTLASS 基线仍有优化空间。
-2. **BF16 基线已迁移**：`bench_bf16.cu`（基于 `cuda_tile.h`，不可编译）保留于根目录，新增 `bench_bf16_cutlass.cu`（CUTLASS `OpClassTensorOp` + `bfloat16_t`）作为新基线。
-3. **C2×2×1 是最优 cluster**：FP4 和 BF16 均确认。C4×2×1 / C2×4×1 / C4×4×1 不可编译。
-4. **M256 tile 提升有限**：M128→M128 到 M256→N128 提升约 18% (492→579 TF)，且 M256×N256 受 smem 限制。
-5. **CUTLASS 内进一步调优空间有限**：579 TF 附近已接近 CUTLASS 框架上限，要进一步提升需手写 PTX 或架构级优化。
+1. **SFD is the main bottleneck**: Scale Factor Decompression overhead is the primary factor limiting FP4→FP4 performance vs the BF16 CUTLASS baseline.
+2. **BF16 baseline migrated**: `bench_bf16.cu` (cuda_tile.h, not buildable) remains for reference; `bench_bf16_cutlass.cu` (CUTLASS `OpClassTensorOp` + `bfloat16_t`) is the new baseline.
+3. **C2×2×1 is the most effective cluster**: Confirmed for both FP4 and BF16. C4×2×1, C2×4×1, C4×4×1 don't compile.
+4. **M256 tiles help modestly**: Going from M128→M128 to M256→N128 gives about 18% (492→579 TF). M256×N256 hits shared memory limits.
+5. **CUTLASS tuning headroom is limited**: At ~579 TFLOPS the framework is near its ceiling for this architecture. Further gains would require handwritten PTX or architecture-level optimization.
 
-## 下一步
+## Next Steps
 
-已完成：
-- [x] 路径集中管理：`env.mk` / `env.sh` 统一 NVCC/CUTLASS_DIR，支持 `env.local.mk` 覆写
-- [x] 结果追踪：`results/*.jsonl` 仅忽略原始数据，元数据（README）可追踪
-- [x] 搜索脚本通过 `-D` 编译器宏切换配置（不修改源码）
-- [x] benchmark 输出结构化统计（per-iteration stats, min/max/stddev/median）
-- [x] JSON 输出格式 + 结果自动归档
-- [x] BF16 基线迁移到 CUTLASS 原生 tensor core（`bench_bf16_cutlass.cu`）
-- [x] 目录重组（`legacy/`, `probes/`, `tests/`, `results/`）
-- [x] 编译基础设施：Makefile + .editorconfig + .gitignore
-- [x] 可复现 benchmark 工具：`run_isolated.sh`（GPU 时钟锁定）
-- [x] 统计严格化：95% CI、CV、SEM 嵌入 benchmark 输出
-- [x] CUTLASS commit + CUDA 版本编译时锁定（`-DCUTLASS_COMMIT`）
-- [x] 测量方法学文档：`METHODOLOGY.md`（计时方式、异常值处理、已知限制）
-- [x] 结果分析流水线：`analyze_results.py`（top-N / 分组 / LaTeX / CSV / 对比模式）
-- [x] 可视化：`plot_results.py`（柱状图、折线图、热力图、分组对比）
-- [x] 多运行聚合：`benchmark_suite.py`（N 次运行 + grand mean ± 95% CI）
-- [x] CI 流水线：`.github/workflows/benchmark-ci.yml`（lint + Python check + 编译验证）
-- [x] 编辑器配置：`.editorconfig`（缩进 2 空格、LF 换行）
+Completed:
+- [x] Centralized path config: `env.mk` / `env.sh` with `env.local.mk` override support
+- [x] Result tracking: `results/*.jsonl` ignored, metadata tracked
+- [x] Search scripts use compiler `-D` flags (no source modification)
+- [x] Benchmark outputs structured stats (per-iteration, min/max/stddev/median)
+- [x] JSON output format + automatic result archiving
+- [x] BF16 baseline migrated to CUTLASS native tensor core (`bench_bf16_cutlass.cu`)
+- [x] Directory reorganization (`legacy/`, `probes/`, `tests/`, `results/`)
+- [x] Build infrastructure: Makefile + .editorconfig + .gitignore
+- [x] Reproducible benchmark tooling: `run_isolated.sh` (GPU clock locking)
+- [x] Statistical rigor: 95% CI, CV, SEM embedded in benchmark output
+- [x] CUTLASS commit + CUDA version pinned at compile time (`-DCUTLASS_COMMIT`)
+- [x] Measurement methodology documentation: `METHODOLOGY.md`
+- [x] Result analysis pipeline: `analyze_results.py` (top-N / grouped / LaTeX / CSV / comparison)
+- [x] Visualization: `plot_results.py` (bar, line, heatmap, comparison charts)
+- [x] Multi-run aggregation: `benchmark_suite.py` (N runs + grand mean ± 95% CI)
+- [x] CI pipeline: `.github/workflows/benchmark-ci.yml` (lint + Python check + compile check)
+- [x] Editor config: `.editorconfig` (2-space indent, LF line endings)
 
-待完成：
-- [ ] 手写 PTX kernel 绕过 CUTLASS 框架开销
-- [ ] 探索 M512 / N512 系列
-- [ ] SFD 流水线化 / 异步解压
+Pending:
+- [ ] Handwritten PTX kernel to bypass CUTLASS framework overhead
+- [ ] Explore M512 / N512 tile sizes
+- [ ] SFD pipeline / asynchronous decompression
 
-## 踩坑记录
+## Pitfalls
 
-详见 [NVFP4_BREAKTHROUGH.md](NVFP4_BREAKTHROUGH.md) — 包含 3 个浪费时间的错误方向及正确解决方案。
+See [NVFP4_BREAKTHROUGH.md](NVFP4_BREAKTHROUGH.md) — 3 wasted directions with documented solutions.
 
 ## License
 
-BSD-3-Clause (CUTLASS 示例代码)
+BSD-3-Clause (CUTLASS sample code)
