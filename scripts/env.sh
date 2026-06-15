@@ -6,7 +6,7 @@
 #   source "$(dirname "$0")/env.sh"
 
 export NVCC="${NVCC:-/usr/local/cuda-13.3/bin/nvcc}"
-export CUTLASS_DIR="${CUTLASS_DIR:-/home/rm01/opencodeWorkspace/cutlass}"
+export CUTLASS_DIR="${CUTLASS_DIR:-../cutlass}"
 
 # Auto-detect CUTLASS commit
 export CUTLASS_COMMIT="${CUTLASS_COMMIT:-$(cd "$CUTLASS_DIR" && git rev-parse --short HEAD 2>/dev/null || echo unknown)}"

@@ -24,9 +24,9 @@ import math
 import os
 import re
 import statistics
+import shlex
 import subprocess
 import sys
-import tempfile
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -177,9 +177,6 @@ def run_config(binary: str, args_str: str, runs: int,
                wrapper: Optional[str] = None,
                timeout: int = 120) -> Dict[str, Any]:
     """Run one config N times, return aggregated result."""
-    args_list = subprocess.list2cmdline([args_str]) if " " not in args_str else []
-    # Use shlex to split properly
-    import shlex
     args_list = shlex.split(args_str)
 
     print(f"  Running {runs}x: {binary} {' '.join(args_list[:4])}...")

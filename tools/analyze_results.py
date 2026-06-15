@@ -29,6 +29,7 @@ Usage:
 import argparse
 import csv
 import json
+import statistics
 import sys
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Tuple
@@ -135,7 +136,6 @@ def show_summary(results: List[Dict[str, Any]]) -> None:
     tfs = [_tf(r) for r in data]
     peaks = [_peak(r) for r in data]
 
-    import statistics
     print(f"{'Metric':<30} {'Value':<15}")
     print("-" * 45)
     print(f"{'Total results':<30} {len(data):<15}")

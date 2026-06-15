@@ -19,6 +19,7 @@ import argparse
 import json
 import math
 import os
+import re
 import sys
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Tuple
@@ -174,7 +175,6 @@ def plot_heatmap(
         if not cluster:
             continue
         # Try to extract M from config string like "M128xN128xK256"
-        import re
         m_match = re.search(r"M(\d+)", cfg)
         if not m_match:
             continue

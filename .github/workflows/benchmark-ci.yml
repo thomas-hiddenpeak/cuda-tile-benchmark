@@ -38,12 +38,12 @@ jobs:
       - name: Python import check
         run: |
           python3 -c "
-import sys
-sys.path.insert(0, 'tools')
-import analyze_results
-import plot_results
-print('All modules import OK')
-" || echo "[warn] plot_results may need matplotlib (not available on runner)"
+          import sys
+          sys.path.insert(0, 'tools')
+          import analyze_results
+          import plot_results
+          print('All modules import OK')
+          " || echo "[warn] plot_results may need matplotlib (not available on runner)"
 
       - name: Gitignore coverage check
         run: |
@@ -51,11 +51,11 @@ print('All modules import OK')
           # Verify binaries are ignored
           echo -n "bench_nvfp4_fp4 ... "
           python3 -c "
-import pathlib
-# Simulate git check-ignore
-rules = open('.gitignore').read().splitlines()
-print('OK')
-" 2>/dev/null || echo "SKIP (no parser, checking by grep)"
+          import pathlib
+          # Simulate git check-ignore
+          rules = open('.gitignore').read().splitlines()
+          print('OK')
+          " 2>/dev/null || echo "SKIP (no parser, checking by grep)"
           grep -q 'bench_nvfp4_fp4$' .gitignore && echo "  bench_nvfp4_fp4: covered" || echo "  WARN: bench_nvfp4_fp4 not in .gitignore"
           grep -q 'results/\*\.jsonl' .gitignore && echo "  results/*.jsonl: covered" || echo "  WARN: results/*.jsonl not in .gitignore"
 
