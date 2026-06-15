@@ -75,11 +75,11 @@ if (props.major != 10 || (props.minor != 0 && props.minor != 1 && props.minor !=
 
 ## 完整可用文件
 
-- `bench_nvfp4_cutlass.cu` — 修改过的 CUTLASS 72a，绕过 sm_110 software gate
-- `build_nvfp4_cutlass.sh` — 一键编译脚本，包含所有必需 flag
+- `legacy/bench_nvfp4_cutlass.cu` — 修改过的 CUTLASS 72a，绕过 sm_110 software gate
+- `scripts/build_nvfp4_cutlass.sh` — 一键编译脚本，包含所有必需 flag
 - `bench_nvfp4_cutlass` — 编译产物
 
-**编译**：`./build_nvfp4_cutlass.sh`
+**编译**：`./scripts/build_nvfp4_cutlass.sh`
 **运行**：`./bench_nvfp4_cutlass --m=4096 --n=4096 --k=4096 --iterations=20`
 
 ---

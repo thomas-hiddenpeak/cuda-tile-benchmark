@@ -22,7 +22,7 @@ Each line is one benchmark configuration.
 
 ```bash
 # Run a search → appends to a new JSONL
-./run_fp4_search.sh
+./scripts/run_fp4_search.sh
 
 # Summarize all results
 cat results/*.jsonl | jq -s 'sort_by(.tflops) | reverse | .[:10]'
