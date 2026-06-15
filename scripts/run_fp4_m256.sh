@@ -4,10 +4,10 @@
 
 cd "$(dirname "$0")"
 source env.sh
-SRC=bench_nvfp4_fp4.cu
-OUTPUT=bench_nvfp4_fp4
+SRC="${PROJECT_ROOT}/benchmarks/bench_nvfp4_fp4.cu"
+OUTPUT="${PROJECT_ROOT}/bench_nvfp4_fp4"
 
-COMPILE_FLAGS="-std=c++17 -O3 -arch=sm_110a ${CUTLASS_INCLUDES} ${CUTLASS_COMPUTE_FLAGS}"
+COMPILE_FLAGS="-std=c++17 -O3 -arch=sm_110a ${PROJECT_INCLUDES} ${CUTLASS_INCLUDES} ${CUTLASS_COMPUTE_FLAGS}"
 
 BINARY_DIR=""
 
@@ -23,8 +23,9 @@ CONFIGS=(
 TOTAL=${#CONFIGS[@]}
 
 # ── Setup results ──
-mkdir -p results
-RESULTS_FILE="results/results_$(date +%Y%m%d_%H%M%S).jsonl"
+RESULTS_DIR="${PROJECT_ROOT}/results"
+mkdir -p "$RESULTS_DIR"
+RESULTS_FILE="${RESULTS_DIR}/results_$(date +%Y%m%d_%H%M%S).jsonl"
 
 cleanup() {
   if [ -n "$BINARY_DIR" ] && [ -d "$BINARY_DIR" ]; then

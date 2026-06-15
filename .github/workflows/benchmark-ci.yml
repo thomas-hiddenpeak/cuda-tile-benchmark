@@ -23,14 +23,14 @@ jobs:
 
       - name: Shell syntax check
         run: |
-          for f in *.sh; do
+          for f in scripts/*.sh; do
             echo -n "Checking $f ... "
             bash -n "$f" && echo "OK"
           done
 
       - name: Python syntax check
         run: |
-          for f in *.py; do
+          for f in tools/*.py; do
             echo -n "Checking $f ... "
             python3 -c "import ast; ast.parse(open('$f').read())" && echo "OK"
           done
@@ -39,7 +39,7 @@ jobs:
         run: |
           python3 -c "
 import sys
-sys.path.insert(0, '.')
+sys.path.insert(0, 'tools')
 import analyze_results
 import plot_results
 print('All modules import OK')
@@ -51,7 +51,7 @@ print('All modules import OK')
           # Verify binaries are ignored
           echo -n "bench_nvfp4_fp4 ... "
           python3 -c "
-import pathlib, gitignore_check
+import pathlib
 # Simulate git check-ignore
 rules = open('.gitignore').read().splitlines()
 print('OK')
@@ -61,7 +61,7 @@ print('OK')
 
       - name: File structure check
         run: |
-          required_files="Makefile env.mk env.sh .gitignore .editorconfig README.md METHODOLOGY.md helper.h"
+          required_files="Makefile env.mk scripts/env.sh .gitignore .editorconfig README.md docs/METHODOLOGY.md include/helper.h"
           missing=""
           for f in $required_files; do
             [ -f "$f" ] || missing="$missing $f"
@@ -70,7 +70,7 @@ print('OK')
             echo "MISSING FILES:$missing"
             exit 1
           fi
-          echo "All $required_files present"
+          echo "All required files present"
 
   build:
     name: Compile check

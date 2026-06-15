@@ -6,9 +6,9 @@
 
 cd "$(dirname "$0")"
 source env.sh
-SRC=bench_nvfp4_fp4.cu
+SRC="${PROJECT_ROOT}/benchmarks/bench_nvfp4_fp4.cu"
 
-COMPILE_FLAGS="-std=c++17 -O3 -arch=sm_110a ${CUTLASS_INCLUDES} ${CUTLASS_COMPUTE_FLAGS}"
+COMPILE_FLAGS="-std=c++17 -O3 -arch=sm_110a ${PROJECT_INCLUDES} ${CUTLASS_INCLUDES} ${CUTLASS_COMPUTE_FLAGS}"
 
 # Read best tile and cluster from args
 BEST_TILE="${1:-128,128,256}"
@@ -31,8 +31,9 @@ SF_CONFIGS=(
 TOTAL=${#SF_CONFIGS[@]}
 
 # ── Setup results ──
-mkdir -p results
-RESULTS_FILE="results/results_$(date +%Y%m%d_%H%M%S).jsonl"
+RESULTS_DIR="${PROJECT_ROOT}/results"
+mkdir -p "$RESULTS_DIR"
+RESULTS_FILE="${RESULTS_DIR}/results_$(date +%Y%m%d_%H%M%S).jsonl"
 
 cleanup() { :; }
 trap 'cleanup' EXIT INT TERM
@@ -64,7 +65,7 @@ for i in $(seq 0 $((TOTAL - 1))); do
   full_label="$TILE_LABEL $label"
   echo -n "[$((i+1))/$TOTAL] $label ... "
 
-  BIN="bench_nvfp4_fp4.sf${INSF}o${OUTSF}"
+  BIN="${PROJECT_ROOT}/bench_nvfp4_fp4.sf${INSF}o${OUTSF}"
 
   build_log=$(mktemp)
   if $NVCC $COMPILE_FLAGS \

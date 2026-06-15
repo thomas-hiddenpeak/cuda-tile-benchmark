@@ -4,9 +4,9 @@
 
 cd "$(dirname "$0")"
 source env.sh
-SRC=bench_nvfp4_fp4.cu
+SRC="${PROJECT_ROOT}/benchmarks/bench_nvfp4_fp4.cu"
 
-COMPILE_FLAGS="-std=c++17 -O3 -arch=sm_110a ${CUTLASS_INCLUDES} ${CUTLASS_COMPUTE_FLAGS}"
+COMPILE_FLAGS="-std=c++17 -O3 -arch=sm_110a ${PROJECT_INCLUDES} ${CUTLASS_INCLUDES} ${CUTLASS_COMPUTE_FLAGS}"
 
 # M×N combinations (K=256, Cluster=2x2x1 fixed)
 declare -a MNS=("64 64" "64 128" "64 256" "128 64" "128 128" "128 256" "256 64" "256 128" "256 256")
@@ -15,8 +15,9 @@ declare -a SFVS=("4" "8" "16" "32")
 TOTAL=$(( ${#MNS[@]} * ${#SFVS[@]} ))
 
 # ── Setup results ──
-mkdir -p results
-RESULTS_FILE="results/results_$(date +%Y%m%d_%H%M%S).jsonl"
+RESULTS_DIR="${PROJECT_ROOT}/results"
+mkdir -p "$RESULTS_DIR"
+RESULTS_FILE="${RESULTS_DIR}/results_$(date +%Y%m%d_%H%M%S).jsonl"
 
 cleanup() { :; }
 trap 'cleanup' EXIT INT TERM
@@ -47,7 +48,7 @@ for MN in "${MNS[@]}"; do
     cfg_name="M${TM}xN${TN}xK256 SFVec=${SF}"
     echo -n "[$count/$TOTAL] $cfg_name ... "
 
-    BIN="bench_nvfp4_fp4.m${TM}n${TN}.sf${SF}"
+    BIN="${PROJECT_ROOT}/bench_nvfp4_fp4.m${TM}n${TN}.sf${SF}"
 
     build_log=$(mktemp)
     if $NVCC $COMPILE_FLAGS \

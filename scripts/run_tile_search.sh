@@ -5,9 +5,9 @@
 
 cd "$(dirname "$0")"
 source env.sh
-SRC=bench_nvfp4_fp4.cu
+SRC="${PROJECT_ROOT}/benchmarks/bench_nvfp4_fp4.cu"
 
-COMPILE_FLAGS="-std=c++17 -O3 -arch=sm_110a ${CUTLASS_INCLUDES} ${CUTLASS_COMPUTE_FLAGS}"
+COMPILE_FLAGS="-std=c++17 -O3 -arch=sm_110a ${PROJECT_INCLUDES} ${CUTLASS_INCLUDES} ${CUTLASS_COMPUTE_FLAGS}"
 
 # Tile shapes: M N K
 TILE_SHAPES=(
@@ -33,8 +33,9 @@ CLUSTERS=(
 TOTAL=$(( ${#TILE_SHAPES[@]} * ${#CLUSTERS[@]} ))
 
 # ── Setup results ──
-mkdir -p results
-RESULTS_FILE="results/results_$(date +%Y%m%d_%H%M%S).jsonl"
+RESULTS_DIR="${PROJECT_ROOT}/results"
+mkdir -p "$RESULTS_DIR"
+RESULTS_FILE="${RESULTS_DIR}/results_$(date +%Y%m%d_%H%M%S).jsonl"
 
 cleanup() { :; }
 trap 'cleanup' EXIT INT TERM
@@ -70,7 +71,7 @@ for TILE in "${TILE_SHAPES[@]}"; do
     full_label="$cfg_name $cl_name"
     echo -n "[$count/$TOTAL] $full_label ... "
 
-    BIN="bench_nvfp4_fp4.m${TM}n${TN}k${TK}.c${CX}${CY}${CZ}"
+    BIN="${PROJECT_ROOT}/bench_nvfp4_fp4.m${TM}n${TN}k${TK}.c${CX}${CY}${CZ}"
 
     build_log=$(mktemp)
     if $NVCC $COMPILE_FLAGS \

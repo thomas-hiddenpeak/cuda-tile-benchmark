@@ -4,9 +4,9 @@
 
 cd "$(dirname "$0")"
 source env.sh
-SRC=bench_nvfp4_fp4.cu
+SRC="${PROJECT_ROOT}/benchmarks/bench_nvfp4_fp4.cu"
 
-COMPILE_FLAGS="-std=c++17 -O3 -arch=sm_110a ${CUTLASS_INCLUDES} ${CUTLASS_COMPUTE_FLAGS}"
+COMPILE_FLAGS="-std=c++17 -O3 -arch=sm_110a ${PROJECT_INCLUDES} ${CUTLASS_INCLUDES} ${CUTLASS_COMPUTE_FLAGS}"
 
 M=${1:-256}
 N=${2:-128}
@@ -15,14 +15,15 @@ CM=${4:-2}
 CN=${5:-1}
 CZ=1
 
-BIN="bench_nvfp4_fp4.m${M}n${N}k${K}.c${CM}${CN}${CZ}"
+BIN="${PROJECT_ROOT}/bench_nvfp4_fp4.m${M}n${N}k${K}.c${CM}${CN}${CZ}"
 
 cfg_name="M${M}xN${N}xK${K}"
 cl_name="C${CM}x${CN}x${CZ}"
 
 # ── Setup results ──
-mkdir -p results
-RESULTS_FILE="results/results_$(date +%Y%m%d_%H%M%S).jsonl"
+RESULTS_DIR="${PROJECT_ROOT}/results"
+mkdir -p "$RESULTS_DIR"
+RESULTS_FILE="${RESULTS_DIR}/results_$(date +%Y%m%d_%H%M%S).jsonl"
 
 cleanup() {
   rm -f "$BIN"
@@ -76,4 +77,4 @@ else
 fi
 
 rm -f "$build_log"
-echo "Results saved to $RESULTS_FILE"
+echo "Results saved to ${RESULTS_DIR}/"

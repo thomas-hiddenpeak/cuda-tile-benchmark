@@ -1,12 +1,18 @@
-# CUDA Tile Benchmark Makefile
+# Thor GEMM Bench Makefile
 include env.mk
 
+# Project includes
+PROJECT_INCLUDES := -I include/
+
 CXXFLAGS   := -std=c++17 -O3 -arch=sm_110a \
+              $(PROJECT_INCLUDES) \
               $(CUTLASS_INCLUDES) \
               $(CUTLASS_COMPUTE_FLAGS) \
               -DCUTLASS_COMMIT=\"$(CUTLASS_COMMIT)\"
 
 LDFLAGS    := -lcudart
+
+BENCH_DIR  := benchmarks
 
 # Core benchmarks
 BENCHMARKS := bench_nvfp4_fp4 bench_nvfp4_fp4_bf16 bench_bf16_cutlass
@@ -15,17 +21,17 @@ BENCHMARKS := bench_nvfp4_fp4 bench_nvfp4_fp4_bf16 bench_bf16_cutlass
 
 all: $(BENCHMARKS)
 
-bench_nvfp4_fp4: bench_nvfp4_fp4.cu helper.h
+bench_nvfp4_fp4: $(BENCH_DIR)/bench_nvfp4_fp4.cu include/helper.h
 	$(NVCC) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
-bench_nvfp4_fp4_bf16: bench_nvfp4_fp4_bf16.cu helper.h
+bench_nvfp4_fp4_bf16: $(BENCH_DIR)/bench_nvfp4_fp4_bf16.cu include/helper.h
 	$(NVCC) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
-bench_bf16_cutlass: bench_bf16_cutlass.cu helper.h
+bench_bf16_cutlass: $(BENCH_DIR)/bench_bf16_cutlass.cu include/helper.h
 	$(NVCC) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
 # Custom tile compilation: make bench_nvfp4_fp4.m128n128 TILES="-DTILE_M=128 -DTILE_N=128"
-bench_nvfp4_fp4.m%: bench_nvfp4_fp4.cu helper.h
+bench_nvfp4_fp4.m%: $(BENCH_DIR)/bench_nvfp4_fp4.cu include/helper.h
 	$(NVCC) $(CXXFLAGS) $< -o $@ $(LDFLAGS) $(TILES)
 
 clean:

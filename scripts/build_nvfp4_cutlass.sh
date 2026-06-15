@@ -11,25 +11,29 @@
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="${PROJECT_ROOT:-$(dirname "$SCRIPT_DIR")}"
+
 NVCC=${NVCC:-/usr/local/cuda-13.3/bin/nvcc}
 CUTLASS_DIR=${CUTLASS_DIR:-/home/rm01/opencodeWorkspace/cutlass}
-SRC_DIR=${SRC_DIR:-/home/rm01/opencodeWorkspace/thor-gemm-bench}
-OUTPUT=${OUTPUT:-/home/rm01/opencodeWorkspace/thor-gemm-bench/bench_nvfp4_cutlass}
+SRC="${PROJECT_ROOT}/legacy/bench_nvfp4_cutlass.cu"
+OUTPUT="${OUTPUT:-${PROJECT_ROOT}/bench_nvfp4_cutlass}"
 
 echo "Building NVFP4 GEMM benchmark for Thor sm_110a..."
 echo "  NVCC:        $NVCC"
 echo "  CUTLASS:     $CUTLASS_DIR"
-echo "  Source:      $SRC_DIR/bench_nvfp4_cutlass.cu"
+echo "  Source:      $SRC"
 echo "  Output:      $OUTPUT"
 echo
 
 $NVCC -std=c++17 -O3 -arch=sm_110a \
-  -I $CUTLASS_DIR/include \
-  -I $CUTLASS_DIR/tools/util/include \
-  -I $CUTLASS_DIR/examples/common \
+  -I "$CUTLASS_DIR/include" \
+  -I "$CUTLASS_DIR/tools/util/include" \
+  -I "$CUTLASS_DIR/examples/common" \
+  -I "${PROJECT_ROOT}/include" \
   --expt-relaxed-constexpr --expt-extended-lambda \
-  $SRC_DIR/bench_nvfp4_cutlass.cu \
-  -o $OUTPUT \
+  "$SRC" \
+  -o "$OUTPUT" \
   -lcudart
 
 echo
