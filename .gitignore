@@ -1,0 +1,17 @@
+# Compiled binaries
+bench_nvfp4_fp4
+bench_nvfp4_fp4_bf16
+bench_bf16
+bench_nvfp4_fp4.*
+bench_bf16.*
+*.bak
+
+# Results (raw data only; metadata files tracked)
+results/*.jsonl
+
+# Build artifacts
+*.o
+
+# Python cache
+__pycache__/
+*.pyc
